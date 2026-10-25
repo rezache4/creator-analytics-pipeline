@@ -1,0 +1,81 @@
+ # cloudbuild-ner.yaml
+#
+# Runs entirely on GCP after the user submits it with --async.
+# Steps:
+#   1. Build the NER container image
+#   2. Push to Artifact Registry
+#   3. Create or update the Cloud Run Job
+#   4. Execute the Cloud Run Job (--async so Cloud Build exits immediately)
+#
+# Cloud Run Job bills only while the container is running; when extract_entities.py
+# exits, billing stops automatically — there is no VM to shut down.
+#
+# Substitutions can be overridden at submission time, e.g.:
+#   gcloud builds submit --config cloudbuild-ner.yaml \
+#     --substitutions _BUCKET=mybucket
+
+substitutions:
+  _BUCKET: socialmediaanalyticsproject
+  _REGION: us-central1
+  _SA:     <email>
+  _JOB:    extract-entities
+  _REPO:   creator-analytics
+  _PROJECT: <GCP_PROJECT_ID>
+
+steps:
+  # ── 1. Build ─────────────────────────────────────────────────────────────────
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.cloudrun
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/ner-job:latest
+      - .
+
+  # ── 2. Push ──────────────────────────────────────────────────────────────────
+  - id: push-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/ner-job:latest
+
+  # ── 3. Create or update Cloud Run Job ────────────────────────────────────────
+  - id: deploy-job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        IMAGE="${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/ner-job:latest"
+        ARGS=(
+          --image          "$IMAGE"
+          --region         "${_REGION}"
+          --service-account "${_SA}"
+          --memory         4Gi
+          --cpu            4
+          --task-timeout   18000
+          --max-retries    0
+          --set-env-vars   "GCS_BUCKET=${_BUCKET}"
+        )
+        gcloud run jobs create  "${_JOB}" "${ARGS[@]}" 2>/dev/null \
+          || gcloud run jobs update "${_JOB}" "${ARGS[@]}"
+
+  # ── 4. Execute Cloud Run Job (async — Cloud Build exits, job keeps running) ──
+  - id: execute-job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - gcloud
+      - run
+      - jobs
+      - execute
+      - ${_JOB}
+      - --region=${_REGION}
+      - --async
+
+images:
+  - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/ner-job:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

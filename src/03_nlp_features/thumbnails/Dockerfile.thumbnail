@@ -1,0 +1,43 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Runtime libs required by OpenCV (headless) and MediaPipe
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install PyTorch CPU-only FIRST to prevent EasyOCR from pulling the 2.5 GB CUDA build
+RUN pip install --upgrade pip && \
+    pip install \
+        torch==2.2.0+cpu \
+        torchvision==0.17.0+cpu \
+        --index-url https://download.pytorch.org/whl/cpu
+
+COPY requirements-thumbnail.txt /app/
+RUN pip install -r requirements-thumbnail.txt
+
+# Pre-download MediaPipe models (they are bundled with the package but running
+# inference once here ensures any lazy init completes at build time)
+RUN python -c "import mediapipe as mp, numpy as np; d = np.zeros((100,100,3), dtype=np.uint8); mp.solutions.face_detection.FaceDetection(model_selection=1).process(d); mp.solutions.face_mesh.FaceMesh(static_image_mode=True, refine_landmarks=True).process(d); print('MediaPipe ready')"
+
+# Pre-download CLIP ViT-L/14 weights into the HuggingFace cache (~1.7 GB)
+RUN python -c "\
+from transformers import CLIPModel, CLIPProcessor; \
+CLIPModel.from_pretrained('openai/clip-vit-large-patch14'); \
+CLIPProcessor.from_pretrained('openai/clip-vit-large-patch14'); \
+print('CLIP ready')"
+
+# Pre-download EasyOCR Italian + English models (~300 MB)
+RUN python -c "\
+import easyocr; \
+easyocr.Reader(['it', 'en'], gpu=False); \
+print('EasyOCR ready')"
+
+COPY thumbnail_features.py /app/
+
+ENTRYPOINT ["python", "thumbnail_features.py"]

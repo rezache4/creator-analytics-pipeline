@@ -1,0 +1,45 @@
+# cloudbuild-thumbnail.yaml
+#
+# Builds and pushes the thumbnail feature-extraction container to Artifact Registry.
+# GCP Batch job submission is handled separately by run_thumbnail_batch.sh.
+#
+# First build: ~60–90 min (CLIP ViT-L/14 ~1.7 GB + EasyOCR + MediaPipe warm-up).
+# Subsequent builds: much faster due to Docker layer caching.
+#
+# Submit:
+#   gcloud builds submit . --config cloudbuild-thumbnail.yaml --project PROJECT
+#
+# Or via the run script (handles uploads + API setup first):
+#   bash run_thumbnail_batch.sh
+
+substitutions:
+  _REGION:  us-central1
+  _REPO:    creator-analytics
+  _PROJECT: <GCP_PROJECT_ID>
+
+steps:
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.thumbnail
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/thumbnail-job:latest
+      - .
+
+  - id: push-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/thumbnail-job:latest
+
+images:
+  - ${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/thumbnail-job:latest
+
+# 90 min covers CLIP download + model warm-up on first build
+timeout: 5400s
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8

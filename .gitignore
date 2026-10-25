@@ -1,0 +1,44 @@
+# Data and outputs: never commit
+data/*
+!data/README.md
+raw_data/
+outputs/
+Output/
+*.csv
+*.parquet
+*.jsonl
+*.json
+*.xlsx
+*.zip
+*.pkl
+*.npy
+*.pt
+
+# Media
+*.mp4
+*.mov
+*.m4a
+*.wav
+*.png
+*.jpg
+
+# Credentials and environments
+.env
+*.env
+gcp_credentials.json
+*cookies*.txt
+.venv/
+venv/
+*_env/
+
+# Python / notebooks
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.bak
+
+# Editor / agent tooling
+.vscode/
+.claude/
+.agent.md
+CLAUDE.md

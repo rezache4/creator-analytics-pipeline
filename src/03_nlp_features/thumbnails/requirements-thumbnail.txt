@@ -1,0 +1,17 @@
+# Thumbnail feature extraction — Python dependencies
+# torch / torchvision are installed separately in the Dockerfile
+# using the CPU-only wheel index to prevent a 2.5 GB CUDA pull.
+#
+# Versions are PINNED. Using >= here resolves to bleeding-edge releases that
+# break the legacy mediapipe `mp.solutions` API and the transformers CLIP API.
+# This set is internally consistent and known to build on python:3.11-slim.
+
+numpy==1.26.4
+opencv-python-headless==4.9.0.80
+mediapipe==0.10.14
+easyocr==1.7.1
+transformers==4.40.2
+Pillow==10.3.0
+pandas==2.2.2
+pyarrow==16.1.0
+google-cloud-storage==2.16.0

@@ -1,0 +1,6 @@
+pandas>=2.2
+pyarrow>=16.0
+spacy>=3.8
+requests>=2.31
+gcsfs>=2024.2
+google-cloud-storage>=2.14

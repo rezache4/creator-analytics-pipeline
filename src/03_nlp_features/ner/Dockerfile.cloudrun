@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential gcc git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Data_Cleaned/requirements-cloudrun.txt /app/requirements-cloudrun.txt
+RUN pip install --upgrade pip \
+    && pip install -r /app/requirements-cloudrun.txt \
+    && python -m spacy download it_core_news_lg
+
+COPY Data_Cleaned /app/Data_Cleaned
+
+WORKDIR /app/Data_Cleaned
+
+ENTRYPOINT ["python", "extract_entities.py"]

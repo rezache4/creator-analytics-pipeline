@@ -1,0 +1,12 @@
+# Core (all commands)
+google-genai
+google-cloud-storage
+gcsfs
+pandas
+pyarrow
+tqdm
+
+# Pathway B / Stage 3 clustering only
+umap-learn
+hdbscan
+scikit-learn
